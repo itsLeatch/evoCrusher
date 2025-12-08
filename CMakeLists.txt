@@ -43,7 +43,7 @@ GETSRCFILES(project_source_files "src")
 
 #add libaries
 add_subdirectory(libs/SFML)
-
+add_subdirectory(libs/box2d)
 
 #add files to exe
 add_executable(${CMAKE_PROJECT_NAME} ${project_source_files} )
@@ -60,4 +60,4 @@ set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY
 
 
 #link libaries
-target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC sfml-window sfml-graphics)
+target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC sfml-window sfml-graphics box2d)
