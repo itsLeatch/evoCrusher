@@ -1,26 +1,5 @@
 #include "PolygonShape.h"
 
-void PolygonShape::createBody(const b2WorldId &worldID, const bool &isDynamic)
-{
-	b2BodyDef groundBodyDef = b2DefaultBodyDef();
-	if (isDynamic == true)
-	{
-
-		groundBodyDef.type = b2_dynamicBody;
-	}
-	bodyId = b2CreateBody(worldID, &groundBodyDef); 
-}
-
-void PolygonShape::setPosition(const sf::Vector2f &pos)
-{
-	b2Body_SetTransform(bodyId, b2Vec2(pos.x, pos.y), b2Body_GetRotation(bodyId));
-}
-
-sf::Vector2f PolygonShape::getPosition()
-{
-	b2Vec2 position = b2Body_GetPosition(bodyId);
-	return sf::Vector2f(position.x, position.y);
-}
 
 void PolygonShape::draw(sf::RenderWindow &window)
 {
@@ -30,11 +9,9 @@ void PolygonShape::draw(sf::RenderWindow &window)
 	std::vector<sf::Vertex> vertices;
 	
 	sf::Transform transform;
-	sf::Vector2f originalPos;
-	b2Vec2 bodyPos = b2Body_GetPosition(bodyId);
-	originalPos = sf::Vector2f(bodyPos.x, bodyPos.y);
-	transform.rotate(sf::radians(b2Rot_GetAngle(b2Body_GetRotation(bodyId))), originalPos);
-	transform.translate(sf::Vector2f(bodyPos.x, bodyPos.y));
+	sf::Vector2f origin = getPosition();
+	transform.rotate(sf::radians(b2Rot_GetAngle(b2Body_GetRotation(bodyId))), origin);
+	transform.translate(origin);
 	for (const b2ShapeId &shapeId : shapeIds)
 	{
 		b2Polygon polygonMesh;

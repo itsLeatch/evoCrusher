@@ -1,7 +1,7 @@
-#include <SFML/Graphics.hpp>
-#include <box2d/box2d.h>
+#pragma once
+#include "Shape.h"
 
-class PolygonShape
+class PolygonShape : public Shape
 {
 private:
 	b2BodyId bodyId;
@@ -11,22 +11,14 @@ public:
 	PolygonShape(const b2WorldId &worldID, const bool &isDynamic)
 	{
 		createBody(worldID, isDynamic);
+		bodyId = getBodyId();
 	}
-
-	void createBody(const b2WorldId &worldID, const bool &isDynamic = true);
 
 	void createShape(const b2Polygon &polygonMesh, const b2ShapeDef &shapeDef)
 	{
+		bodyId = getBodyId();
 		b2CreatePolygonShape(bodyId, &shapeDef, &polygonMesh);
 	}
 
-	b2BodyId getBodyId() const
-	{
-		return bodyId;
-	}
-
-	void setPosition(const sf::Vector2f &pos);
-	sf::Vector2f getPosition();
-
-	void draw(sf::RenderWindow &window);
+	void draw(sf::RenderWindow &window) override;
 };
