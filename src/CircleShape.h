@@ -6,7 +6,6 @@
 class CircleShape : public Shape
 {
 private:
-	b2BodyId bodyId;
 
 public:
 	CircleShape() = default;
@@ -17,7 +16,6 @@ public:
 
 	void createShape(const b2Circle &circleMesh, const b2ShapeDef &shapeDef)
 	{
-		bodyId = getBodyId();
 		b2CreateCircleShape(bodyId, &shapeDef, &circleMesh);
 	}
 

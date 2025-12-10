@@ -3,9 +3,6 @@
 
 class PolygonShape : public Shape
 {
-private:
-	b2BodyId bodyId;
-
 public:
 	PolygonShape() = default;
 	PolygonShape(const b2WorldId &worldID, const bool &isDynamic)
@@ -16,7 +13,6 @@ public:
 
 	void createShape(const b2Polygon &polygonMesh, const b2ShapeDef &shapeDef)
 	{
-		bodyId = getBodyId();
 		b2CreatePolygonShape(bodyId, &shapeDef, &polygonMesh);
 	}
 

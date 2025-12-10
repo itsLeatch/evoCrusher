@@ -20,7 +20,7 @@ void PolygonShape::draw(sf::RenderWindow &window)
 		for (uint32_t i = 0; i < polygonMesh.count; i++)
 		{
 			sf::Vertex vertex;
-			vertex.color = sf::Color::White;
+			vertex.color = color;
 
 			sf::Vector2f localPos = sf::Vector2f(polygonMesh.vertices[i].x, polygonMesh.vertices[i].y);
 			vertex.position = transform.transformPoint(localPos);
@@ -28,13 +28,7 @@ void PolygonShape::draw(sf::RenderWindow &window)
 			vertices.push_back(vertex);
 		}
 		// Close the loop
-			sf::Vertex vertex;
-			vertex.color = sf::Color::White;
-
-			sf::Vector2f localPos = sf::Vector2f(polygonMesh.vertices[0].x, polygonMesh.vertices[0].y);
-			vertex.position = transform.transformPoint(localPos);
-
-			vertices.push_back(vertex);
+			vertices.push_back(vertices[0]);
 	}
 	window.draw(vertices.data(), vertices.size(), sf::PrimitiveType::LineStrip);
 }

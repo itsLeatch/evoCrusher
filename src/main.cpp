@@ -8,81 +8,83 @@
 #include "PolygonShape.h"
 #include "CircleShape.h"
 
-CircleShape ball;
-PolygonShape ground;
+CircleShape player;
+PolygonShape target;
 
 const int frameRate = 60;
 sf::RenderWindow window;
-/*
-void drawSolidPolygons(b2Transform transform, const b2Vec2 *vertices, int vertexCount, float radius, b2HexColor color,
-                       void *context)
+float zoomFaktor = 100;
+
+b2WorldId worldId;
+
+void createPlayer()
 {
-    
-	std::vector<sf::Vertex> drawVertices;
-	
-	sf::Transform vertexTransform;
-	sf::Vector2f originPos;
+    player.createBody(worldId, true);
+    player.setPosition(sf::Vector2f(4.0f, 3.0f));
+    b2MotionLocks lock = {false, false, true};
+    b2Body_SetMotionLocks(player.bodyId, lock);
+    b2Circle circleShape;
+    circleShape.center = b2Vec2(0, 0);
+    circleShape.radius = 0.25;
+    b2ShapeDef circleShapeDef = b2DefaultShapeDef();
+    circleShapeDef.density = 1.0f;
+    circleShapeDef.enableSensorEvents = true;
+    player.createShape(circleShape, circleShapeDef);
+}
 
-    originPos = sf::Vector2f(transform.p.x, transform.p.y);
-	vertexTransform.rotate(sf::radians(b2Rot_GetAngle(transform.q)), originPos);
-	vertexTransform.translate(originPos);
-	
-	for (uint32_t i = 0; i < vertexCount; i++)
-		{
-			sf::Vertex vertex;
-			vertex.color = sf::Color(color);
+void createTarget()
+{
+    target.createBody(worldId, false);
+    target.setPosition(sf::Vector2f(1, 1));
+    target.color = sf::Color::Green;
+    b2Polygon box = b2MakeBox(0.5, 0.5);
+    b2ShapeDef boxDef = b2DefaultShapeDef();
+    boxDef.density = 1.0f;
+    boxDef.isSensor = true;
+    boxDef.enableSensorEvents = true;
+    target.createShape(box, boxDef);
+}
 
-			sf::Vector2f localPos = sf::Vector2f(vertices[i].x, vertices[i].y);
-			vertex.position = vertexTransform.transformPoint(localPos);
+void update()
+{
+    b2SensorEvents events = b2World_GetSensorEvents(worldId);
+    for (int i = 0; i < events.beginCount; i++)
+    {
+        b2SensorBeginTouchEvent event = events.beginEvents[i];
+        if (player.containsShape(event.visitorShapeId) && target.containsShape(event.sensorShapeId))
+        {
+            target.color = sf::Color::Red;
+        }
+    }
 
-			drawVertices.push_back(vertex);
-		}
-        //close the loop
-			drawVertices.push_back(drawVertices[0]);
-	
-	window.draw(drawVertices.data(), drawVertices.size(), sf::PrimitiveType::LineStrip);
-}*/
+    for (int i = 0; i < events.endCount; i++)
+    {
+        b2SensorEndTouchEvent event = events.endEvents[i];
+        if (player.containsShape(event.visitorShapeId) && target.containsShape(event.sensorShapeId))
+        {
+            target.color = sf::Color::Green;
+        }
+    }
+}
 
 int main()
 {
 
     // create world
-    b2Vec2 gravity(0, 9.0f);
+    b2Vec2 gravity = b2Vec2(0, 0);
     b2WorldDef world = b2DefaultWorldDef();
     world.gravity = gravity;
-    b2WorldId worldId = b2CreateWorld(&world);
+    worldId = b2CreateWorld(&world);
 
-    /*b2DebugDraw debugDraw = b2DefaultDebugDraw();
-    debugDraw.DrawSolidPolygonFcn = drawSolidPolygons;
-    debugDraw.drawShapes = true;*/
-
-    ball.createBody(worldId, true);
-    ball.setPosition(sf::Vector2f(5.0f, 0.0f));
-
-    b2Circle circleShape;
-    circleShape.center = b2Vec2(0,0);
-    circleShape.radius = 1;
-    b2ShapeDef circleShapeDef = b2DefaultShapeDef();
-    circleShapeDef.density = 1.0f;
-    b2SurfaceMaterial material = b2DefaultSurfaceMaterial();
-    material.restitution = 0.8;
-    circleShapeDef.material = material; 
-    ball.createShape(circleShape, circleShapeDef);
-
-    ground.createBody(worldId, false);
-    ground.setPosition(sf::Vector2f(2.0f, 4.0f));
-
-    b2Polygon secondBox = b2MakeBox(3.5f, .5f);
-    b2Circle cirkel;
-    b2ShapeDef secondShapeDef = b2DefaultShapeDef();
-    secondShapeDef.density = 1.0f;
-    ground.createShape(secondBox, secondShapeDef);
+    createPlayer();
+    createTarget();
 
     window.create(sf::VideoMode({800, 600}), PROJECT_NAME);
     window.setFramerateLimit(frameRate);
 
-    window.setView(sf::View(sf::FloatRect(sf::Vector2f(0.f, 0.f), sf::Vector2f(8, 6))));
+    window.setView(sf::View(sf::FloatRect(sf::Vector2f(0.f, 0.f), sf::Vector2f(window.getSize().x / zoomFaktor, window.getSize().y / zoomFaktor))));
 
+    sf::Vector2f resultingVelocity = sf::Vector2f(0.0f, 0.0f);
     while (window.isOpen())
     {
         while (const std::optional event = window.pollEvent())
@@ -90,16 +92,53 @@ int main()
 
             if (event->is<sf::Event::Closed>())
                 window.close();
+            //resize event
+            if (event->is<sf::Event::Resized>())
+            {
+                window.setView(sf::View(sf::FloatRect(sf::Vector2f(0.f, 0.f), sf::Vector2f(event->getIf<sf::Event::Resized>()->size.x / zoomFaktor, event->getIf<sf::Event::Resized>()->size.y / zoomFaktor))));
+            }
+            if (const auto *keyPressed = event->getIf<sf::Event::KeyPressed>())
+            {
+                if (keyPressed->scancode == sf::Keyboard::Scancode::W)
+                {
+                    resultingVelocity.y = -5.0f;
+                }
+                if (keyPressed->scancode == sf::Keyboard::Scancode::S)
+                {
+                    resultingVelocity.y = 5.0f;
+                }
+                if (keyPressed->scancode == sf::Keyboard::Scancode::A)
+                {
+                    resultingVelocity.x = -5.0f;
+                }
+                if (keyPressed->scancode == sf::Keyboard::Scancode::D)
+                {
+                    resultingVelocity.x = 5.0f;
+                }
+            }
+            if (const auto *keyReleased = event->getIf<sf::Event::KeyReleased>())
+            {
+                if (keyReleased->scancode == sf::Keyboard::Scancode::W || keyReleased->scancode == sf::Keyboard::Scancode::S)
+                {
+                    resultingVelocity.y = 0.0f;
+                }
+                if (keyReleased->scancode == sf::Keyboard::Scancode::A || keyReleased->scancode == sf::Keyboard::Scancode::D)
+                {
+                    resultingVelocity.x = 0.0f;
+                }
+            }
         }
+        player.setVelocity(resultingVelocity);
 
         // clear the window with black color
         window.clear(sf::Color::Black);
 
         b2World_Step(worldId, 1.0f / frameRate, 4);
+        update();
 
-        //b2World_Draw(worldId, &debugDraw);
-        ball.draw(window);
-        ground.draw(window);
+        // b2World_Draw(worldId, &debugDraw);
+        player.draw(window);
+        target.draw(window);
 
         // end the current frame
         window.display();
