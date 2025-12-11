@@ -1,4 +1,4 @@
-#include <SFML/Graphics.hpp>
+//#include <SFML/Graphics.hpp>
 #include <box2d/box2d.h>
 
 #include <iostream>
@@ -8,24 +8,29 @@
 #include "PolygonShape.h"
 #include "CircleShape.h"
 
+#include <torch/torch.h>
+#include <imgui.h>
+#include <SFML/Graphics.hpp>
+#include <imgui-SFML.h>
+
 CircleShape player;
 PolygonShape target;
 
 const int frameRate = 60;
 sf::RenderWindow window;
 float zoomFaktor = 100;
-
 b2WorldId worldId;
 
+
+sf::View Camera = sf::View(sf::Vector2f(0.0f, 0.0f), sf::Vector2f(800, 600));
 void createPlayer()
 {
     player.createBody(worldId, true);
     player.setPosition(sf::Vector2f(4.0f, 3.0f));
-    b2MotionLocks lock = {false, false, true};
-    b2Body_SetMotionLocks(player.bodyId, lock);
+    b2Body_SetFixedRotation(player.bodyId, true);
     b2Circle circleShape;
     circleShape.center = b2Vec2(0, 0);
-    circleShape.radius = 0.25;
+    circleShape.radius = 0.3;
     b2ShapeDef circleShapeDef = b2DefaultShapeDef();
     circleShapeDef.density = 1.0f;
     circleShapeDef.enableSensorEvents = true;
@@ -67,10 +72,25 @@ void update()
     }
 }
 
+void torchTest(){
+    std::cout << "Torch test" << std::endl;
+    torch::Tensor tensor = torch::eye(3);
+    std::cout << tensor << std::endl;
+
+    //vector with random entries
+    torch::Tensor randTensor = torch::rand({2,3});
+    std::cout << randTensor << std::endl;
+
+    torch::Tensor biggerTensor = torch::rand({4,4,5});
+    std::cout << biggerTensor << std::endl;
+}
+
 int main()
 {
-
-    // create world
+    torchTest();
+    
+    
+    //create world
     b2Vec2 gravity = b2Vec2(0, 0);
     b2WorldDef world = b2DefaultWorldDef();
     world.gravity = gravity;
@@ -79,23 +99,28 @@ int main()
     createPlayer();
     createTarget();
 
-    window.create(sf::VideoMode({800, 600}), PROJECT_NAME);
+    window.create(sf::VideoMode({800,600}), PROJECT_NAME);
     window.setFramerateLimit(frameRate);
+    ImGui::SFML::Init(window);
 
-    window.setView(sf::View(sf::FloatRect(sf::Vector2f(0.f, 0.f), sf::Vector2f(window.getSize().x / zoomFaktor, window.getSize().y / zoomFaktor))));
 
+    
+    sf::Clock deltaClock;
     sf::Vector2f resultingVelocity = sf::Vector2f(0.0f, 0.0f);
     while (window.isOpen())
     {
         while (const std::optional event = window.pollEvent())
         {
+            ImGui::SFML::ProcessEvent(window, *event);
 
             if (event->is<sf::Event::Closed>())
                 window.close();
             //resize event
             if (event->is<sf::Event::Resized>())
             {
-                window.setView(sf::View(sf::FloatRect(sf::Vector2f(0.f, 0.f), sf::Vector2f(event->getIf<sf::Event::Resized>()->size.x / zoomFaktor, event->getIf<sf::Event::Resized>()->size.y / zoomFaktor))));
+                const auto& resizeEvent = event->getIf<sf::Event::Resized>();
+                Camera.setSize(sf::Vector2f(resizeEvent->size.x / zoomFaktor, resizeEvent->size.y / zoomFaktor));
+                window.setView(Camera);
             }
             if (const auto *keyPressed = event->getIf<sf::Event::KeyPressed>())
             {
@@ -133,13 +158,14 @@ int main()
         // clear the window with black color
         window.clear(sf::Color::Black);
 
+        ImGui::SFML::Update(window, deltaClock.restart());
+        ImGui::ShowDemoWindow();
         b2World_Step(worldId, 1.0f / frameRate, 4);
         update();
 
-        // b2World_Draw(worldId, &debugDraw);
         player.draw(window);
         target.draw(window);
-
+        ImGui::SFML::Render(window);
         // end the current frame
         window.display();
     }

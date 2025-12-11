@@ -42,3 +42,7 @@
 
 bin
 build/
+
+vcpkg-configuration.json
+vcpkg_installed/
+CmakePresets.json

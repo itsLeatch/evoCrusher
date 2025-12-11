@@ -27,6 +27,7 @@ bool Shape::containsShape(const b2ShapeId &shape)
 
 		delete[] shapes;
 	}
+	return false;
 }
 
 void Shape::setPosition(const sf::Vector2f &pos)

@@ -2,6 +2,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(evoCrushers VERSION 0.0.1)
 
+#set(DCMAKE_PREFIX_PATH "D:/Programmieren/libs/libtorch-shared-with-deps-latest/libtorch/share/cmake/Torch")
 #get input from cmake for c++
 #configure_file(${CMAKE_SOURCE_DIR}/cmake/cmake_inputfile.h.in ${CMAKE_SOURCE_DIR}/src/projectConfig.h )
 
@@ -9,6 +10,15 @@ project(evoCrushers VERSION 0.0.1)
 #set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin/${CMAKE_GENERATOR_PLATFORM}/${CMAKE_BUILD_TYPE})
 #set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin/${CMAKE_GENERATOR_PLATFORM}/${CMAKE_BUILD_TYPE})
 #set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY  ${PROJECT_SOURCE_DIR}/bin/${CMAKE_GENERATOR_PLATFORM}/${CMAKE_BUILD_TYPE})
+
+option(SET_TORCH_MANUELLY "Manuelly set the path for Torch" OFF)
+set(Torch_ROOT "" CACHE PATH "Root path to PyTorch/Torch when SET_TORCH_MANUELLY is enabled")
+if(SET_TORCH_MANUELLY)
+    if(Torch_ROOT)
+        message(STATUS "Using Torch from ${Torch_ROOT}")
+        list(APPEND CMAKE_PREFIX_PATH "${Torch_ROOT}")
+    endif()
+endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin") 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
@@ -28,22 +38,24 @@ file(GLOB temp CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/${ARGV1}/*c" "${CMAKE_SOUR
 list(APPEND ${ARGV0} ${temp}) 
 endmacro()
 
-set(BUILD_SHARED_LIBS on)
+#set(BUILD_SHARED_LIBS on)
 
 configure_file(${PROJECT_SOURCE_DIR}/cmake/cmakeInput.h.in ${PROJECT_SOURCE_DIR}/src/cmakeInput.h)
 
 
-#create var for lib directory
-set(lib_dir "${CMAKE_SOURCE_DIR}/libs")
-
 #get all src files 
-
 GETSRCFILES(project_source_files "src")
 
-
 #add libaries
-add_subdirectory(libs/SFML)
-add_subdirectory(libs/box2d)
+#add_subdirectory(libs/box2d)
+
+find_package(ImGui-SFML CONFIG REQUIRED)
+find_package(box2d CONFIG REQUIRED)
+
+find_package(Torch REQUIRED)
+message(STATUS "Torch found: ${Torch_VERSION}")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 #add files to exe
 add_executable(${CMAKE_PROJECT_NAME} ${project_source_files} )
@@ -58,6 +70,16 @@ endif()
 
 set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
-
 #link libaries
-target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC sfml-window sfml-graphics box2d)
+target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC box2d::box2d)
+target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC "${TORCH_LIBRARIES}")
+target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC ImGui-SFML::ImGui-SFML)
+
+if (MSVC)
+  file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
+  add_custom_command(TARGET ${CMAKE_PROJECT_NAME}
+                     POST_BUILD
+                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                     ${TORCH_DLLS}
+                     $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>)
+endif (MSVC)
