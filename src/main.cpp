@@ -7,7 +7,7 @@
 #include "cmakeInput.h"
 #include "PolygonShape.h"
 #include "CircleShape.h"
-#include "Bot.h"
+#include "PathFinder.h"
 
 #include <torch/torch.h>
 #include <imgui.h>
@@ -15,10 +15,14 @@
 #include <imgui-SFML.h>
 #include <random>
 
-Bot players[10];
+PathFinder players[10];
 PolygonShape target;
 
 const int frameRate = 60;
+const float timeStepsPerSecond = 240.0f;
+
+float speed = 1.0f;
+
 sf::RenderWindow window;
 float zoomFaktor = 100;
 b2WorldId worldId;
@@ -28,11 +32,20 @@ std::mt19937 rng(dev());
 
 sf::View Camera = sf::View(sf::Vector2f(0.0f, 0.0f), sf::Vector2f(800 / zoomFaktor, 600 / zoomFaktor));
 
-sf::Clock timeSinceStart;
-void createPlayer()
+sf::Time maxTimePerGeneration = sf::seconds(7);
+size_t worldSteps = 0;
+size_t generationNumber = 0;
+
+float getTimeSinceWorldStart()
+{
+    return worldSteps / timeStepsPerSecond;
+}
+
+void generateBotGeneration()
 {
     for (auto &player : players)
     {
+        player = PathFinder();
         player.createBody(worldId, true);
         player.setPosition(sf::Vector2f(0.0f, 0.0f));
         b2Body_SetFixedRotation(player.bodyId, true);
@@ -64,7 +77,28 @@ void createTarget()
     target.createShape(box, boxDef);
 }
 
-void update()
+void generateWorld()
+{
+    // reset world
+    if (worldId.index1 != b2_nullWorldId.index1)
+    {
+        b2DestroyWorld(worldId);
+    }
+    worldId = b2_nullWorldId;
+
+    worldSteps = 0;
+
+    // create world
+    b2Vec2 gravity = b2Vec2(0, 0);
+    b2WorldDef world = b2DefaultWorldDef();
+    world.gravity = gravity;
+    worldId = b2CreateWorld(&world);
+
+    generateBotGeneration();
+    createTarget();
+}
+
+void updateBox2dEvents()
 {
     b2SensorEvents events = b2World_GetSensorEvents(worldId);
     for (int i = 0; i < events.beginCount; i++)
@@ -76,29 +110,47 @@ void update()
             if (player.containsShape(event.visitorShapeId) && target.containsShape(event.sensorShapeId))
             {
                 target.color = sf::Color::Red;
-                player.setTargetReached(timeSinceStart.getElapsedTime().asSeconds());
-                std::cout << player.getInvertedFitness() << "weights: " << player.getWeights() << std::endl;
+                player.setTargetReached(getTimeSinceWorldStart());
+                std::cout << player.calculateFitness() << "weights: " << player.getWeights() << std::endl;
             }
         }
     }
-//no end events needed for now
+    // no end events needed for now
+}
+
+void startNewGeneration()
+{
+    generationNumber++;
+    generateWorld();
 }
 
 void init()
 {
-    // create world
-    b2Vec2 gravity = b2Vec2(0, 0);
-    b2WorldDef world = b2DefaultWorldDef();
-    world.gravity = gravity;
-    worldId = b2CreateWorld(&world);
-
-    createPlayer();
-    createTarget();
+    startNewGeneration();
 
     window.create(sf::VideoMode({800, 600}), PROJECT_NAME);
     window.setFramerateLimit(frameRate);
     window.setView(Camera);
     ImGui::SFML::Init(window);
+}
+
+void updateBotStates()
+{
+
+    for (auto &player : players)
+        player.updateDirection(b2Body_GetPosition(target.bodyId));
+}
+
+void draw()
+{
+    for (auto &player : players)
+    {
+        if (player.isAlive())
+        {
+            player.draw(window);
+        }
+    }
+    target.draw(window);
 }
 
 int main()
@@ -107,7 +159,6 @@ int main()
 
     sf::Clock deltaClock;
     sf::Vector2f resultingVelocity = sf::Vector2f(0.0f, 0.0f);
-    timeSinceStart.start();
     while (window.isOpen())
     {
         while (const std::optional event = window.pollEvent())
@@ -128,19 +179,26 @@ int main()
         window.clear(sf::Color::Black);
 
         ImGui::SFML::Update(window, deltaClock.restart());
-        for (auto &player : players)
-            player.updateDirection(b2Body_GetPosition(target.bodyId));
-        b2World_Step(worldId, 1.0f / frameRate, 4);
-        update();
-        for (auto &player : players){
-            if(player.checkAlive()){
-                player.draw(window);
-            }
-        }
-        target.draw(window);
+        updateBotStates();
+        size_t worldstepsInThisFrame = static_cast<size_t>(timeStepsPerSecond / frameRate * speed);
+        worldstepsInThisFrame <= 0 ? worldstepsInThisFrame = 1 : worldstepsInThisFrame = worldstepsInThisFrame;
+        b2World_Step(worldId, 1.0f * speed / frameRate, worldstepsInThisFrame);
+        worldSteps += worldstepsInThisFrame;
+        updateBox2dEvents();
+        draw();
+        ImGui::Begin("Generation Info");
+        ImGui::Text("Generation: %d", generationNumber);
+        ImGui::Text("Time: %.2f", getTimeSinceWorldStart());
+        ImGui::SliderFloat("Speed", &speed, 0.1f, 5000.0f);
+        ImGui::End();
         ImGui::SFML::Render(window);
         // end the current frame
         window.display();
+        if (getTimeSinceWorldStart() >= maxTimePerGeneration.asSeconds() || std::all_of(std::begin(players), std::end(players), [](PathFinder &p)
+                                                                                        { return !p.isAlive(); }))
+        {
+            startNewGeneration();
+        }
     }
     b2DestroyWorld(worldId);
     worldId = b2_nullWorldId;
