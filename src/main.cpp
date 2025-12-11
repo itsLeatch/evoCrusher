@@ -1,4 +1,4 @@
-//#include <SFML/Graphics.hpp>
+// #include <SFML/Graphics.hpp>
 #include <box2d/box2d.h>
 
 #include <iostream>
@@ -7,13 +7,15 @@
 #include "cmakeInput.h"
 #include "PolygonShape.h"
 #include "CircleShape.h"
+#include "Bot.h"
 
 #include <torch/torch.h>
 #include <imgui.h>
 #include <SFML/Graphics.hpp>
 #include <imgui-SFML.h>
+#include <random>
 
-CircleShape player;
+Bot players[10];
 PolygonShape target;
 
 const int frameRate = 60;
@@ -21,26 +23,38 @@ sf::RenderWindow window;
 float zoomFaktor = 100;
 b2WorldId worldId;
 
+std::random_device dev;
+std::mt19937 rng(dev());
 
-sf::View Camera = sf::View(sf::Vector2f(0.0f, 0.0f), sf::Vector2f(800, 600));
+sf::View Camera = sf::View(sf::Vector2f(0.0f, 0.0f), sf::Vector2f(800 / zoomFaktor, 600 / zoomFaktor));
+
+sf::Clock timeSinceStart;
 void createPlayer()
 {
-    player.createBody(worldId, true);
-    player.setPosition(sf::Vector2f(4.0f, 3.0f));
-    b2Body_SetFixedRotation(player.bodyId, true);
-    b2Circle circleShape;
-    circleShape.center = b2Vec2(0, 0);
-    circleShape.radius = 0.3;
-    b2ShapeDef circleShapeDef = b2DefaultShapeDef();
-    circleShapeDef.density = 1.0f;
-    circleShapeDef.enableSensorEvents = true;
-    player.createShape(circleShape, circleShapeDef);
+    for (auto &player : players)
+    {
+        player.createBody(worldId, true);
+        player.setPosition(sf::Vector2f(0.0f, 0.0f));
+        b2Body_SetFixedRotation(player.bodyId, true);
+        b2Circle circleShape;
+        circleShape.center = b2Vec2(0, 0);
+        circleShape.radius = 0.3;
+        b2ShapeDef circleShapeDef = b2DefaultShapeDef();
+
+        circleShapeDef.filter.categoryBits = 0x00000002;
+        // colide with everything except other bots
+        circleShapeDef.filter.maskBits = 0xFFFFFFFF & ~0x00000002;
+        circleShapeDef.density = 1.0f;
+        circleShapeDef.enableSensorEvents = true;
+        player.createShape(circleShape, circleShapeDef);
+    }
 }
 
 void createTarget()
 {
     target.createBody(worldId, false);
-    target.setPosition(sf::Vector2f(1, 1));
+    std::uniform_int_distribution<std::mt19937::result_type> randomPos(0, 7);
+    target.setPosition(sf::Vector2f(randomPos(rng) - 3.5, randomPos(rng) - 3.5));
     target.color = sf::Color::Green;
     b2Polygon box = b2MakeBox(0.5, 0.5);
     b2ShapeDef boxDef = b2DefaultShapeDef();
@@ -56,41 +70,23 @@ void update()
     for (int i = 0; i < events.beginCount; i++)
     {
         b2SensorBeginTouchEvent event = events.beginEvents[i];
-        if (player.containsShape(event.visitorShapeId) && target.containsShape(event.sensorShapeId))
+        for (auto &player : players)
         {
-            target.color = sf::Color::Red;
+
+            if (player.containsShape(event.visitorShapeId) && target.containsShape(event.sensorShapeId))
+            {
+                target.color = sf::Color::Red;
+                player.setTargetReached(timeSinceStart.getElapsedTime().asSeconds());
+                std::cout << player.getInvertedFitness() << "weights: " << player.getWeights() << std::endl;
+            }
         }
     }
-
-    for (int i = 0; i < events.endCount; i++)
-    {
-        b2SensorEndTouchEvent event = events.endEvents[i];
-        if (player.containsShape(event.visitorShapeId) && target.containsShape(event.sensorShapeId))
-        {
-            target.color = sf::Color::Green;
-        }
-    }
+//no end events needed for now
 }
 
-void torchTest(){
-    std::cout << "Torch test" << std::endl;
-    torch::Tensor tensor = torch::eye(3);
-    std::cout << tensor << std::endl;
-
-    //vector with random entries
-    torch::Tensor randTensor = torch::rand({2,3});
-    std::cout << randTensor << std::endl;
-
-    torch::Tensor biggerTensor = torch::rand({4,4,5});
-    std::cout << biggerTensor << std::endl;
-}
-
-int main()
+void init()
 {
-    torchTest();
-    
-    
-    //create world
+    // create world
     b2Vec2 gravity = b2Vec2(0, 0);
     b2WorldDef world = b2DefaultWorldDef();
     world.gravity = gravity;
@@ -99,14 +95,19 @@ int main()
     createPlayer();
     createTarget();
 
-    window.create(sf::VideoMode({800,600}), PROJECT_NAME);
+    window.create(sf::VideoMode({800, 600}), PROJECT_NAME);
     window.setFramerateLimit(frameRate);
+    window.setView(Camera);
     ImGui::SFML::Init(window);
+}
 
+int main()
+{
+    init();
 
-    
     sf::Clock deltaClock;
     sf::Vector2f resultingVelocity = sf::Vector2f(0.0f, 0.0f);
+    timeSinceStart.start();
     while (window.isOpen())
     {
         while (const std::optional event = window.pollEvent())
@@ -115,61 +116,32 @@ int main()
 
             if (event->is<sf::Event::Closed>())
                 window.close();
-            //resize event
+            // resize event
             if (event->is<sf::Event::Resized>())
             {
-                const auto& resizeEvent = event->getIf<sf::Event::Resized>();
+                const auto &resizeEvent = event->getIf<sf::Event::Resized>();
                 Camera.setSize(sf::Vector2f(resizeEvent->size.x / zoomFaktor, resizeEvent->size.y / zoomFaktor));
                 window.setView(Camera);
             }
-            if (const auto *keyPressed = event->getIf<sf::Event::KeyPressed>())
-            {
-                if (keyPressed->scancode == sf::Keyboard::Scancode::W)
-                {
-                    resultingVelocity.y = -5.0f;
-                }
-                if (keyPressed->scancode == sf::Keyboard::Scancode::S)
-                {
-                    resultingVelocity.y = 5.0f;
-                }
-                if (keyPressed->scancode == sf::Keyboard::Scancode::A)
-                {
-                    resultingVelocity.x = -5.0f;
-                }
-                if (keyPressed->scancode == sf::Keyboard::Scancode::D)
-                {
-                    resultingVelocity.x = 5.0f;
-                }
-            }
-            if (const auto *keyReleased = event->getIf<sf::Event::KeyReleased>())
-            {
-                if (keyReleased->scancode == sf::Keyboard::Scancode::W || keyReleased->scancode == sf::Keyboard::Scancode::S)
-                {
-                    resultingVelocity.y = 0.0f;
-                }
-                if (keyReleased->scancode == sf::Keyboard::Scancode::A || keyReleased->scancode == sf::Keyboard::Scancode::D)
-                {
-                    resultingVelocity.x = 0.0f;
-                }
-            }
         }
-        player.setVelocity(resultingVelocity);
-
         // clear the window with black color
         window.clear(sf::Color::Black);
 
         ImGui::SFML::Update(window, deltaClock.restart());
-        ImGui::ShowDemoWindow();
+        for (auto &player : players)
+            player.updateDirection(b2Body_GetPosition(target.bodyId));
         b2World_Step(worldId, 1.0f / frameRate, 4);
         update();
-
-        player.draw(window);
+        for (auto &player : players){
+            if(player.checkAlive()){
+                player.draw(window);
+            }
+        }
         target.draw(window);
         ImGui::SFML::Render(window);
         // end the current frame
         window.display();
     }
-
     b2DestroyWorld(worldId);
     worldId = b2_nullWorldId;
 }
