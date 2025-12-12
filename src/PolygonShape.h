@@ -4,10 +4,9 @@
 class PolygonShape : public Shape
 {
 public:
-	PolygonShape() = default;
-	PolygonShape(const b2WorldId &worldID, const bool &isDynamic)
+	PolygonShape() = delete;
+	PolygonShape(const b2WorldId &worldID, const bool &isDynamic) : Shape(worldID, isDynamic)
 	{
-		createBody(worldID, isDynamic);
 		bodyId = getBodyId();
 	}
 

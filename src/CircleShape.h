@@ -9,10 +9,10 @@ class CircleShape : public Shape
 private:
 
 public:
-	CircleShape() = default;
-	CircleShape(const b2WorldId &worldID, const bool &isDynamic)
+	CircleShape() = delete;
+	CircleShape(const b2WorldId &worldID, const bool &isDynamic) : Shape(worldID, isDynamic)
 	{
-		createBody(worldID, isDynamic);
+		
 	}
 
 	void createShape(const b2Circle &circleMesh, const b2ShapeDef &shapeDef)

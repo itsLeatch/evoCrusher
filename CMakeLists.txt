@@ -83,3 +83,9 @@ if (MSVC)
                      ${TORCH_DLLS}
                      $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>)
 endif (MSVC)
+
+#copy assets
+add_custom_target(copy_assets
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/assets ${CMAKE_CURRENT_BINARY_DIR}/assets
+)
+add_dependencies(${CMAKE_PROJECT_NAME} copy_assets)

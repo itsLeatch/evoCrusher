@@ -1,18 +1,8 @@
 #include "Shape.h"
 
-void Shape::createBody(const b2WorldId &worldID, const bool &isDynamic)
-{
-	b2BodyDef groundBodyDef = b2DefaultBodyDef();
-	if (isDynamic == true)
-	{
-
-		groundBodyDef.type = b2_dynamicBody;
-	}
-	bodyId = b2CreateBody(worldID, &groundBodyDef);
-}
-
 bool Shape::containsShape(const b2ShapeId &shape)
 {
+
 	size_t shapeCount = b2Body_GetShapeCount(bodyId);
 	b2ShapeId *shapes = new b2ShapeId[shapeCount];
 	b2Body_GetShapes(bodyId, shapes, shapeCount);

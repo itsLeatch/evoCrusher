@@ -8,15 +8,23 @@
 #include "PolygonShape.h"
 #include "CircleShape.h"
 #include "PathFinder.h"
+#include "DebugDrawings.h"
 
 #include <torch/torch.h>
 #include <imgui.h>
 #include <SFML/Graphics.hpp>
 #include <imgui-SFML.h>
 #include <random>
+#include <algorithm>
+#include <memory>
 
-PathFinder players[10];
-PolygonShape target;
+std::random_device dev;
+std::mt19937 rng(dev());
+
+DebugDrawings debugDrawings;
+
+std::vector<std::shared_ptr<PathFinder>> players;
+std::shared_ptr<PolygonShape> target;
 
 const int frameRate = 60;
 const float timeStepsPerSecond = 240.0f;
@@ -27,14 +35,12 @@ sf::RenderWindow window;
 float zoomFaktor = 100;
 b2WorldId worldId;
 
-std::random_device dev;
-std::mt19937 rng(dev());
-
 sf::View Camera = sf::View(sf::Vector2f(0.0f, 0.0f), sf::Vector2f(800 / zoomFaktor, 600 / zoomFaktor));
 
 sf::Time maxTimePerGeneration = sf::seconds(7);
 size_t worldSteps = 0;
 size_t generationNumber = 0;
+
 
 float getTimeSinceWorldStart()
 {
@@ -43,15 +49,16 @@ float getTimeSinceWorldStart()
 
 void generateBotGeneration()
 {
-    for (auto &player : players)
+    players.clear();
+    for (size_t i = 0; i < 10; i++)
     {
-        player = PathFinder();
-        player.createBody(worldId, true);
-        player.setPosition(sf::Vector2f(0.0f, 0.0f));
-        b2Body_SetFixedRotation(player.bodyId, true);
+        players.push_back(std::make_unique<PathFinder>(worldId, true));
+        std::shared_ptr<PathFinder> player = players[players.size() - 1];
+        player->setPosition(sf::Vector2f(0.0f, 0.0f));
+        b2Body_SetFixedRotation(player->bodyId, true);
         b2Circle circleShape;
         circleShape.center = b2Vec2(0, 0);
-        circleShape.radius = 0.3;
+        circleShape.radius = 0.1;
         b2ShapeDef circleShapeDef = b2DefaultShapeDef();
 
         circleShapeDef.filter.categoryBits = 0x00000002;
@@ -59,22 +66,24 @@ void generateBotGeneration()
         circleShapeDef.filter.maskBits = 0xFFFFFFFF & ~0x00000002;
         circleShapeDef.density = 1.0f;
         circleShapeDef.enableSensorEvents = true;
-        player.createShape(circleShape, circleShapeDef);
+        player->createShape(circleShape, circleShapeDef);
+
     }
 }
 
 void createTarget()
 {
-    target.createBody(worldId, false);
+    target.reset();
+    target = std::make_shared<PolygonShape>(worldId, false);
     std::uniform_int_distribution<std::mt19937::result_type> randomPos(0, 7);
-    target.setPosition(sf::Vector2f(randomPos(rng) - 3.5, randomPos(rng) - 3.5));
-    target.color = sf::Color::Green;
-    b2Polygon box = b2MakeBox(0.5, 0.5);
+    target->setPosition(sf::Vector2f(randomPos(rng) - 3.5, randomPos(rng) - 3.5));
+    target->color = sf::Color::Green;
+    b2Polygon box = b2MakeBox(1, 1);
     b2ShapeDef boxDef = b2DefaultShapeDef();
     boxDef.density = 1.0f;
     boxDef.isSensor = true;
     boxDef.enableSensorEvents = true;
-    target.createShape(box, boxDef);
+    target->createShape(box, boxDef);
 }
 
 void generateWorld()
@@ -82,6 +91,7 @@ void generateWorld()
     // reset world
     if (worldId.index1 != b2_nullWorldId.index1)
     {
+        players.clear();
         b2DestroyWorld(worldId);
     }
     worldId = b2_nullWorldId;
@@ -104,24 +114,30 @@ void updateBox2dEvents()
     for (int i = 0; i < events.beginCount; i++)
     {
         b2SensorBeginTouchEvent event = events.beginEvents[i];
-        for (auto &player : players)
-        {
 
-            if (player.containsShape(event.visitorShapeId) && target.containsShape(event.sensorShapeId))
+        // use one of the build in algorithms to remove bots that reached the target
+        for (size_t i = 0; i < players.size(); ++i)
+        {
+            if (players[i]->containsShape(event.visitorShapeId) && target->containsShape(event.sensorShapeId))
             {
-                target.color = sf::Color::Red;
-                player.setTargetReached(getTimeSinceWorldStart());
-                std::cout << player.calculateFitness() << "weights: " << player.getWeights() << std::endl;
+                players.erase(std::begin(players) + i);
+                --i;
             }
         }
     }
-    // no end events needed for now
 }
 
 void startNewGeneration()
 {
     generationNumber++;
     generateWorld();
+}
+
+void updateBotStates()
+{
+
+    for (auto &player : players)
+        player->updateDirection(b2Body_GetPosition(target->bodyId));
 }
 
 void init()
@@ -131,26 +147,18 @@ void init()
     window.create(sf::VideoMode({800, 600}), PROJECT_NAME);
     window.setFramerateLimit(frameRate);
     window.setView(Camera);
+    debugDrawings.setRenderTarget(window);
+    debugDrawings.drawContactFeatures = true;
     ImGui::SFML::Init(window);
-}
-
-void updateBotStates()
-{
-
-    for (auto &player : players)
-        player.updateDirection(b2Body_GetPosition(target.bodyId));
 }
 
 void draw()
 {
     for (auto &player : players)
     {
-        if (player.isAlive())
-        {
-            player.draw(window);
-        }
+        player->draw(window);
     }
-    target.draw(window);
+    target->draw(window);
 }
 
 int main()
@@ -186,16 +194,17 @@ int main()
         worldSteps += worldstepsInThisFrame;
         updateBox2dEvents();
         draw();
+        b2World_Draw(worldId, &debugDrawings);
         ImGui::Begin("Generation Info");
         ImGui::Text("Generation: %d", generationNumber);
         ImGui::Text("Time: %.2f", getTimeSinceWorldStart());
-        ImGui::SliderFloat("Speed", &speed, 0.1f, 5000.0f);
+        ImGui::SliderFloat("Speed", &speed, 0.1f, 50.0f);
         ImGui::End();
+
         ImGui::SFML::Render(window);
         // end the current frame
         window.display();
-        if (getTimeSinceWorldStart() >= maxTimePerGeneration.asSeconds() || std::all_of(std::begin(players), std::end(players), [](PathFinder &p)
-                                                                                        { return !p.isAlive(); }))
+        if (getTimeSinceWorldStart() >= maxTimePerGeneration.asSeconds() || players.empty())
         {
             startNewGeneration();
         }
