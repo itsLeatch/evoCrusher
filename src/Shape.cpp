@@ -2,22 +2,8 @@
 
 bool Shape::containsShape(const b2ShapeId &shape)
 {
-
-	size_t shapeCount = b2Body_GetShapeCount(bodyId);
-	b2ShapeId *shapes = new b2ShapeId[shapeCount];
-	b2Body_GetShapes(bodyId, shapes, shapeCount);
-	for (size_t i = 0; i < shapeCount; ++i)
-	{
-		if (shapes[i].index1 == shape.index1 &&
-			shapes[i].world0 == shape.world0) //TODO: check if generation is also needed
-		{
-			delete[] shapes;
-			return true;
-		}
-
-		delete[] shapes;
-	}
-	return false;
+	auto bodyOfShape = b2Shape_GetBody(shape);
+	return bodyOfShape.world0 == bodyId.world0 && bodyOfShape.index1 == bodyId.index1;
 }
 
 void Shape::setPosition(const sf::Vector2f &pos)

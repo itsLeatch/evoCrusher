@@ -5,7 +5,7 @@ class PolygonShape : public Shape
 {
 public:
 	PolygonShape() = delete;
-	PolygonShape(const b2WorldId &worldID, const bool &isDynamic) : Shape(worldID, isDynamic)
+	PolygonShape(const b2WorldId &worldID, const bool &isDynamic, const uint64_t& shapeType) : Shape(worldID, isDynamic, shapeType)
 	{
 		bodyId = getBodyId();
 	}

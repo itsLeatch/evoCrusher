@@ -3,14 +3,21 @@
 #include <box2d/box2d.h>
 
 #include <iostream>
+
+#define SHAPE_TYPE_NONE 1
+#define SHAPE_TYPE_BOT 2
+#define SHAPE_TYPE_FOOD 4
+
+
 class Shape
 {
 public:
     b2BodyId bodyId;
     sf::Color color = sf::Color::White;
+    uint64_t shapeType = SHAPE_TYPE_NONE;
 
     Shape() = delete;
-    Shape(const b2WorldId &worldID, const bool &isDynamic)
+    Shape(const b2WorldId &worldID, const bool &isDynamic, const uint64_t& shapeType) : shapeType(shapeType)
     {
         b2BodyDef groundBodyDef = b2DefaultBodyDef();
         if (isDynamic == true)
@@ -35,6 +42,11 @@ public:
     }
 
     bool containsShape(const b2ShapeId &shape);
+    static uint64_t getShapeTypeFromShapeId(const b2ShapeId &shapeId)
+    {
+        b2Filter filter = b2Shape_GetFilter(shapeId);
+        return filter.categoryBits;
+    }
 
     // positioning
     void setPosition(const sf::Vector2f &pos);
