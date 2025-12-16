@@ -1,0 +1,2 @@
+# Importent
+From this point of the project, I switched from sfml and c++ together with Box2d to Godot Engine 4. The reason for this change is that Godot provides a more integrated and user-friendly environment for game development, allowing for faster prototyping and iteration. Additionally, Godot's built-in physics engine and scene system simplify the process of creating and managing game objects, making it easier to focus on gameplay mechanics rather than low-level implementation details. This transition aims to enhance productivity and streamline the development workflow.
