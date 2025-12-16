@@ -1,6 +1,0 @@
-{
-  "dependencies": [
-    "imgui-sfml",
-    "box2d"
-  ]
-}
