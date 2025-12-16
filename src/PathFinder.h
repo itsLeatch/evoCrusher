@@ -4,20 +4,23 @@
 #include "CircleShape.h"
 #include <vector>
 
-
-struct SensorData{
+struct SensorData
+{
     float lenght;
     float sensorAngle;
     uint64_t targetType;
     b2RayResult rayResult;
 };
 
-class PathFinder : public CircleShape{
+class PathFinder : public CircleShape
+{
 private:
-    float timeToTarget = 0.0f;
-    std::vector<SensorData> sensors;
+    float footCollected = 0.0f;
 
-    torch::Tensor weights = torch::rand({2, 2});
+private:
+    std::vector<SensorData> sensors;
+    // weights random between -1 and 1
+    torch::Tensor weights = torch::rand({10, 2}) * 2 - 1;
 
     // take a direction vector with x and y between -1 and 1 and return a velocity vector
     torch::Tensor forewardPass(const torch::Tensor &input)
@@ -29,34 +32,43 @@ private:
 
 public:
     PathFinder() = delete;
-    PathFinder(const b2WorldId &worldID, const bool &isDynamic, const std::vector<SensorData>& sensors) : CircleShape(worldID, isDynamic, SHAPE_TYPE_BOT), sensors(sensors)
-    {   
-        
+    PathFinder(const b2WorldId &worldID, const bool &isDynamic, const std::vector<SensorData> &sensors) : CircleShape(worldID, isDynamic, SHAPE_TYPE_BOT), sensors(sensors)
+    {
     }
 
-    void decitionMaking(const b2WorldId& worldID, const b2Vec2 &targetPos)
+    void decitionMaking()
     {
-            for (SensorData& sensor : sensors){
-                // update sensor data
-                b2Vec2 start = b2Body_GetPosition(bodyId);
-                b2Vec2 end = b2Body_GetLinearVelocity(bodyId);
-                end = b2RotateVector(b2MakeRot(sensor.sensorAngle), end);
-                end = b2Normalize(end) * sensor.lenght;
-                sensor.rayResult = b2World_CastRayClosest(worldID, start, end, b2DefaultQueryFilter());
-                sensor.targetType = sensor.rayResult.hit ? getShapeTypeFromShapeId(sensor.rayResult.shapeId) : SHAPE_TYPE_NONE;
-                if(sensor.rayResult.hit){
-                    std::cout << "Sensor hit shape of type: " << sensor.targetType << std::endl;
-                }
-            }
+        for (SensorData &sensor : sensors)
+        {
+            // update sensor data
+            b2Vec2 start = b2Body_GetPosition(bodyId);
+            b2Vec2 end = b2Body_GetLinearVelocity(bodyId);
+            end = b2RotateVector(b2MakeRot(sensor.sensorAngle), end);
+            end = b2Normalize(end) * sensor.lenght;
+            b2QueryFilter filter = b2DefaultQueryFilter();
+            b2ShapeId bodyShapes;
+            b2Body_GetShapes(bodyId, &bodyShapes, 1);
+            filter.maskBits = b2Shape_GetFilter(bodyShapes).maskBits;
+            sensor.rayResult = b2World_CastRayClosest(b2Body_GetWorld(bodyId), start, end, filter);
+            sensor.targetType = sensor.rayResult.hit ? getShapeTypeFromShapeId(sensor.rayResult.shapeId) : SHAPE_TYPE_NONE;
+        }
+        torch::Tensor input = torch::tensor({});
+        // create input vector
+        // add for each sensor the distance to the hit point, hit is food
+        for (const SensorData &sensor : sensors)
+        {
+            float distance = sensor.rayResult.hit ? b2Distance(b2Body_GetPosition(bodyId), sensor.rayResult.point) / sensor.lenght : sensor.lenght;
+            float isTarget = (sensor.targetType == SHAPE_TYPE_FOOD) ? 1.0f : 0.0f;
+            float isObstacle = (sensor.targetType == SHAPE_TYPE_OBSTACLE) ? 1.0f : 0.0f;
+            input = torch::cat({input, torch::tensor({distance, isTarget, isObstacle})});
+        }
+        // add a bias input
+        input = torch::cat({input, torch::tensor({1.0f})});
 
-
-            b2Vec2 direction = targetPos - b2Body_GetPosition(bodyId);
-            torch::Tensor input = torch::tensor({direction.x, direction.y});
-            torch::Tensor output = forewardPass(input);
-            b2Vec2 velocity = b2Vec2(output[0].item<float>(), output[1].item<float>());
-            velocity = b2Normalize(velocity);
-            setVelocity(sf::Vector2f(velocity.x, velocity.y));
-        
+        torch::Tensor output = forewardPass(input);
+        b2Vec2 velocity = b2Vec2(output[0].item<float>(), output[1].item<float>());
+        velocity = b2Normalize(velocity);
+        setVelocity(sf::Vector2f(velocity.x, velocity.y));
     }
 
     // get weights
@@ -70,25 +82,61 @@ public:
         weights = newWeights;
     }
 
-    virtual void draw(sf::RenderWindow &window) override{
+    float getFootCollected() const
+    {
+        return footCollected;
+    }
+
+    void collectFoot()
+    {
+        footCollected += 1.0f;
+    }
+
+    virtual void draw(sf::RenderWindow &window) override
+    {
         CircleShape::draw(window);
+        // draw foot collected as text above the bot
+        //TODO: use a standard font and not load it every frame
+        sf::Font font;
+        if (!font.openFromFile("./assets/arial.ttf"))
+        {
+            std::cerr << "Failed to load font!" << std::endl;
+            return;
+        }
+
+        sf::Text text(font);
+        text.setString(std::to_string(static_cast<int>(footCollected)));
+        text.setCharacterSize(12);
+        text.setFillColor(sf::Color::Green);
+        sf::Vector2f position = getPosition();
+        sf::Vector2i globalPos = window.mapCoordsToPixel(position);
+        globalPos.y -= 32; 
+        auto recoveryView = window.getView();
+        window.setView(window.getDefaultView());
+        text.setPosition(sf::Vector2f(globalPos.x, globalPos.y));
+        window.draw(text);
+        window.setView(recoveryView);
+
         // draw sensors
-        for(const SensorData& sensor : sensors){
+        for (const SensorData &sensor : sensors)
+        {
             b2Vec2 start = b2Body_GetPosition(bodyId);
             b2Vec2 end = b2Body_GetLinearVelocity(bodyId);
-            if(sensor.rayResult.hit){
+            if (sensor.rayResult.hit)
+            {
                 end = sensor.rayResult.point;
-            }else{
+            }
+            else
+            {
                 end = b2RotateVector(b2MakeRot(sensor.sensorAngle), end);
                 end = start + b2Normalize(end) * sensor.lenght;
             }
-            
+
             sf::Vertex line[] =
-            {
-                sf::Vertex(sf::Vector2f(start.x, start.y), sf::Color::Red),
-                sf::Vertex(sf::Vector2f(end.x, end.y), sf::Color::Red)
-            };
+                {
+                    sf::Vertex(sf::Vector2f(start.x, start.y), sf::Color::Red),
+                    sf::Vertex(sf::Vector2f(end.x, end.y), sf::Color::Red)};
             window.draw(line, 2, sf::PrimitiveType::Lines);
         }
     }
-}; 
+};

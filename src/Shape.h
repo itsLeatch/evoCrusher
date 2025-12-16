@@ -7,6 +7,7 @@
 #define SHAPE_TYPE_NONE 1
 #define SHAPE_TYPE_BOT 2
 #define SHAPE_TYPE_FOOD 4
+#define SHAPE_TYPE_OBSTACLE 8
 
 
 class Shape
@@ -31,7 +32,6 @@ public:
     {
         if (b2Body_IsValid(bodyId))
         {
-
             b2DestroyBody(bodyId);
         }
     }

@@ -25,6 +25,7 @@ DebugDrawings debugDrawings;
 
 std::vector<std::shared_ptr<PathFinder>> players;
 std::shared_ptr<PolygonShape> target;
+std::shared_ptr<PolygonShape> worldBorder[4];
 
 const int frameRate = 60;
 const float timeStepsPerSecond = 240.0f;
@@ -73,7 +74,7 @@ void generateBotGeneration()
     }
 }
 
-void createTarget()
+void createFoot()
 {
     target.reset();
     target = std::make_shared<PolygonShape>(worldId, false, SHAPE_TYPE_FOOD);
@@ -86,6 +87,35 @@ void createTarget()
     boxDef.isSensor = true;
     boxDef.enableSensorEvents = true;
     target->createShape(box, boxDef);
+}
+
+void createWorldBorder(b2Vec2& center, b2Vec2& size, float wallWidth = 0.1f)
+{
+    b2Vec2 positions[4] = {
+        b2Vec2(center.x, center.y - size.y / 2 - wallWidth), // top
+        b2Vec2(center.x, center.y + size.y / 2 + wallWidth), // bottom
+        b2Vec2(center.x - size.x / 2 - wallWidth, center.y), // left
+        b2Vec2(center.x + size.x / 2 + wallWidth, center.y)  // right
+    };
+    for(int i = 0; i < 4; i++)
+    {
+        worldBorder[i].reset();
+        worldBorder[i] = std::make_unique<PolygonShape>(worldId, false, SHAPE_TYPE_OBSTACLE);
+        worldBorder[i]->color = sf::Color::Blue;
+        worldBorder[i]->setPosition(sf::Vector2f(positions[i].x, positions[i].y));
+        b2Polygon box;  
+        if(i < 2) // top or bottom
+        {
+            box = b2MakeBox(size.x + wallWidth * 2, wallWidth);
+        }
+        else // left or right
+        {
+            box = b2MakeBox(wallWidth, size.y + wallWidth * 2);
+        }
+        b2ShapeDef boxDef = b2DefaultShapeDef();
+        boxDef.density = 1.0f;
+        worldBorder[i]->createShape(box, boxDef);
+    }
 }
 
 void generateWorld()
@@ -107,7 +137,10 @@ void generateWorld()
     worldId = b2CreateWorld(&world);
 
     generateBotGeneration();
-    createTarget();
+    createFoot();
+    b2Vec2 center = b2Vec2(0.0f, 0.0f);
+    b2Vec2 size = b2Vec2(8.0f, 8.0f);
+    createWorldBorder(center, size);
 }
 
 void updateBox2dEvents()
@@ -123,9 +156,11 @@ void updateBox2dEvents()
         {
             if (players[i]->containsShape(event.visitorShapeId) && target->containsShape(event.sensorShapeId))
             {
-                players.erase(std::begin(players) + i);
-                --i; 
-                break;
+                /*players.erase(std::begin(players) + i);
+                --i;*/
+                players[i]->collectFoot();
+                createFoot();
+                return;
             }
         }
     }
@@ -141,7 +176,7 @@ void updateBotStates()
 {
 
     for (auto &player : players)
-        player->decitionMaking(worldId, b2Body_GetPosition(target->bodyId));
+        player->decitionMaking();
 }
 
 void init()
@@ -163,6 +198,10 @@ void draw()
         player->draw(window);
     }
     target->draw(window);
+    for(int i = 0; i < 4; i++)
+    {
+        worldBorder[i]->draw(window);
+    }
 }
 
 int main()

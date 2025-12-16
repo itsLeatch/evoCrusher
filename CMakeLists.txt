@@ -75,17 +75,19 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC box2d::box2d)
 target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC "${TORCH_LIBRARIES}")
 target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC ImGui-SFML::ImGui-SFML)
 
-if (MSVC)
-  file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
-  add_custom_command(TARGET ${CMAKE_PROJECT_NAME}
-                     POST_BUILD
-                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                     ${TORCH_DLLS}
-                     $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>)
-endif (MSVC)
+
+#if (MSVC)
+ # file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
+  #add_custom_command(TARGET ${CMAKE_PROJECT_NAME}
+   #                  POST_BUILD
+    #                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
+     #                ${TORCH_DLLS}
+      #               $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>)
+#endif (MSVC)
 
 #copy assets
-add_custom_target(copy_assets
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/assets ${CMAKE_CURRENT_BINARY_DIR}/assets
-)
-add_dependencies(${CMAKE_PROJECT_NAME} copy_assets)
+add_custom_command(TARGET ${CMAKE_PROJECT_NAME}
+                  POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "${PROJECT_SOURCE_DIR}/assets"
+                    "$<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>/assets")
