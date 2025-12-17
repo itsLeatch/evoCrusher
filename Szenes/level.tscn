@@ -1,29 +1,17 @@
-[gd_scene load_steps=3 format=3 uid="uid://c77ead4vwisb6"]
+[gd_scene load_steps=4 format=3 uid="uid://c77ead4vwisb6"]
 
-[ext_resource type="PackedScene" uid="uid://c23qv0qocwhf8" path="res://Bot.tscn" id="1_34oe3"]
+[ext_resource type="Script" uid="uid://i8efkg6577w1" path="res://Szenes/level.gd" id="1_5dmvq"]
 [ext_resource type="PackedScene" uid="uid://d2cje8xyqloof" path="res://border.tscn" id="2_5dmvq"]
+[ext_resource type="Script" uid="uid://cmj0vcf7ns27q" path="res://Szenes/camera_2d.gd" id="3_rtq64"]
 
 [node name="Level" type="Node2D"]
+script = ExtResource("1_5dmvq")
 
-[node name="Bot" parent="." instance=ExtResource("1_34oe3")]
-
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Bots" type="Node2D" parent="."]
+position = Vector2(-580, -297)
 
 [node name="Borders" parent="." instance=ExtResource("2_5dmvq")]
 position = Vector2(623, -1)
 
-[node name="Border" parent="Borders" instance=ExtResource("2_5dmvq")]
-position = Vector2(-623, -329)
-scale = Vector2(1280, 64)
-
-[node name="Border2" parent="Borders" instance=ExtResource("2_5dmvq")]
-position = Vector2(-623, 331)
-scale = Vector2(1280, 64)
-
-[node name="Border3" parent="Borders" instance=ExtResource("2_5dmvq")]
-position = Vector2(-1236, 1)
-scale = Vector2(64, 720)
-
-[node name="Border4" parent="Borders" instance=ExtResource("2_5dmvq")]
-position = Vector2(-13, 3.0000038)
-scale = Vector2(64, 720)
+[node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("3_rtq64")

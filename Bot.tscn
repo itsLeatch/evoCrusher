@@ -7,9 +7,11 @@
 radius = 16.0
 
 [node name="Bot" type="CharacterBody2D"]
+collision_layer = 2
 script = ExtResource("1_sck5o")
 
 [node name="BotImage" type="Sprite2D" parent="."]
+texture_filter = 1
 texture = ExtResource("2_q6hsy")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
