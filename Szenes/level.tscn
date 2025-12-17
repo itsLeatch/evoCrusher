@@ -15,3 +15,10 @@ position = Vector2(623, -1)
 
 [node name="Camera2D" type="Camera2D" parent="."]
 script = ExtResource("3_rtq64")
+
+[node name="Food" type="Node2D" parent="."]
+
+[node name="Timer" type="Timer" parent="."]
+autostart = true
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

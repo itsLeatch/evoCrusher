@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://bhmpglq0yta5t"]
+
+[ext_resource type="Script" uid="uid://2xwj474nf1d" path="res://food.gd" id="1_pohk7"]
+[ext_resource type="Texture2D" uid="uid://ynli5axjf5qi" path="res://images/food.png" id="2_q6vj8"]
+
+[node name="Food" type="Area2D"]
+collision_mask = 2
+script = ExtResource("1_pohk7")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_q6vj8")
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="."]
+polygon = PackedVector2Array(-16, 13, 0, -7, 5, -7, 8, -15, 14, -12, 14, -5, 15, 1, -10, 16, -16, 16)
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

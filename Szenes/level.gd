@@ -5,6 +5,7 @@ extends Node2D
 
 var BorderScene: PackedScene = load("res://border.tscn")
 var BotScene: PackedScene = load("res://Bot.tscn")
+var FoodScene: PackedScene = load("res://food.tscn")
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	#create border
@@ -36,3 +37,10 @@ func _ready() -> void:
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
 	pass
+	
+
+
+func _on_timer_timeout() -> void:
+	var food = FoodScene.instantiate()
+	$Food.add_child(food)
+	

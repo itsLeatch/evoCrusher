@@ -1,7 +1,10 @@
-[gd_scene load_steps=4 format=3 uid="uid://c23qv0qocwhf8"]
+[gd_scene load_steps=5 format=3 uid="uid://c23qv0qocwhf8"]
 
 [ext_resource type="Script" uid="uid://cjawdd5bdjn8g" path="res://bot.gd" id="1_sck5o"]
 [ext_resource type="Texture2D" uid="uid://pbtkgpmeudhn" path="res://images/bot.png" id="2_q6hsy"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_sck5o"]
+font_color = Color(0.85960585, 0.3173426, 0.41227093, 1)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_sck5o"]
 radius = 16.0
@@ -9,10 +12,18 @@ radius = 16.0
 [node name="Bot" type="CharacterBody2D"]
 collision_layer = 2
 script = ExtResource("1_sck5o")
+speed = 50.0
 
 [node name="BotImage" type="Sprite2D" parent="."]
 texture_filter = 1
 texture = ExtResource("2_q6hsy")
+
+[node name="Label" type="Label" parent="."]
+offset_left = -20.0
+offset_top = -41.0
+offset_right = 20.0
+offset_bottom = -18.0
+label_settings = SubResource("LabelSettings_sck5o")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_sck5o")
