@@ -15,7 +15,7 @@ const sensorInputCount:int = 4
 # velocityY
 
 
-const sensorOutputCount: int = 1
+const sensorOutputCount: int = 2
 
 @export var speed :float = 300
 @export var sensorLength : float = 100
