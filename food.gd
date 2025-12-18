@@ -1,5 +1,7 @@
 extends Area2D
 
+class_name Food
+
 var rng = RandomNumberGenerator.new()
 
 # Called when the node enters the scene tree for the first time.

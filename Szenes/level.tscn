@@ -6,7 +6,9 @@
 
 [node name="Level" type="Node2D"]
 script = ExtResource("1_5dmvq")
-botCount = 1
+botCount = null
+borderSize = null
+constantFoodCount = null
 
 [node name="Bots" type="Node2D" parent="."]
 position = Vector2(-580, -297)
@@ -18,8 +20,3 @@ position = Vector2(623, -1)
 script = ExtResource("3_rtq64")
 
 [node name="Food" type="Node2D" parent="."]
-
-[node name="Timer" type="Timer" parent="."]
-autostart = true
-
-[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

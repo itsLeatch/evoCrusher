@@ -2,6 +2,7 @@ extends Node2D
 
 @export var botCount: int = 10
 @export var borderSize: float = 64
+@export var constantFoodCount: int = 10
 
 var BorderScene: PackedScene = load("res://border.tscn")
 var BotScene: PackedScene = load("res://Bot.tscn")
@@ -29,18 +30,17 @@ func _ready() -> void:
 	$Borders.add_child(rightBorder)
 	rightBorder.global_position = Vector2(Global.mapSize.x / 2 + borderSize / 2,0)
 	rightBorder.scale = Vector2(borderSize,Global.mapSize.y)
-	#create bots
-	for i in range(botCount):
-		var bot = BotScene.instantiate()
-		$Bots.add_child(bot)
-
+	
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
-	pass
+	#make sure, that bot count is not below 10
+	var botNode : Node2D = $Bots
+	while botNode.get_child_count() < 10:
+		var bot = BotScene.instantiate()
+		botNode.add_child(bot)
 	
-
-
-func _on_timer_timeout() -> void:
-	var food = FoodScene.instantiate()
-	$Food.add_child(food)
+	var foodNode = $Food
+	while foodNode.get_child_count() < constantFoodCount:
+		var food = FoodScene.instantiate()
+		$Food.add_child(food)
 	
