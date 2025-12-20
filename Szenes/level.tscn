@@ -1,14 +1,34 @@
-[gd_scene load_steps=4 format=3 uid="uid://c77ead4vwisb6"]
+[gd_scene load_steps=5 format=3 uid="uid://c77ead4vwisb6"]
 
 [ext_resource type="Script" uid="uid://i8efkg6577w1" path="res://Szenes/level.gd" id="1_5dmvq"]
 [ext_resource type="PackedScene" uid="uid://d2cje8xyqloof" path="res://border.tscn" id="2_5dmvq"]
+[ext_resource type="Script" uid="uid://cuf38lfs3lxgl" path="res://Szenes/canvas_layer.gd" id="2_6a6fj"]
 [ext_resource type="Script" uid="uid://cmj0vcf7ns27q" path="res://Szenes/camera_2d.gd" id="3_rtq64"]
 
 [node name="Level" type="Node2D"]
 script = ExtResource("1_5dmvq")
-botCount = null
-borderSize = null
-constantFoodCount = null
+botCount = 25
+constantFoodCount = 50
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+script = ExtResource("2_6a6fj")
+
+[node name="simulationSpeedSlider" type="HSlider" parent="CanvasLayer"]
+offset_left = -2.0
+offset_top = 3.0
+offset_right = 217.0
+offset_bottom = 231.0
+min_value = 0.5
+max_value = 15.0
+step = 0.5
+value = 1.0
+
+[node name="Label" type="Label" parent="CanvasLayer"]
+offset_left = 221.0
+offset_top = 107.0
+offset_right = 261.0
+offset_bottom = 130.0
+text = "hi"
 
 [node name="Bots" type="Node2D" parent="."]
 position = Vector2(-580, -297)
@@ -16,7 +36,15 @@ position = Vector2(-580, -297)
 [node name="Borders" parent="." instance=ExtResource("2_5dmvq")]
 position = Vector2(623, -1)
 
+[node name="Food" type="Node2D" parent="."]
+
+[node name="FoodTimeToRespawn" type="Timer" parent="."]
+wait_time = 0.75
+autostart = true
+
 [node name="Camera2D" type="Camera2D" parent="."]
 script = ExtResource("3_rtq64")
 
-[node name="Food" type="Node2D" parent="."]
+[connection signal="drag_ended" from="CanvasLayer/simulationSpeedSlider" to="." method="_on_simulation_speed_slider_drag_ended"]
+[connection signal="drag_ended" from="CanvasLayer/simulationSpeedSlider" to="CanvasLayer" method="_on_simulation_speed_slider_drag_ended"]
+[connection signal="timeout" from="FoodTimeToRespawn" to="." method="_on_food_spawner_timeout"]
