@@ -5,11 +5,13 @@ extends Node2D
 @export var constantFoodCount: int = 50
 @export var mapSize: Vector2 = Vector2(1280, 720)
 
-var BorderScene: PackedScene = load("res://border.tscn")
-var BotScene: PackedScene = load("res://Bot.tscn")
-var FoodScene: PackedScene = load("res://food.tscn")
+var BorderScene: PackedScene = load("res://Szenes/border/border.tscn")
+var BotScene: PackedScene = load("res://Szenes/bot/bot.tscn")
+var FoodScene: PackedScene = load("res://Szenes/food/food.tscn")
+
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+	
 	Global.currentLevel = self
 	print(Global.currentLevel)
 	#create border

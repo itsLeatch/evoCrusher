@@ -1,9 +1,9 @@
 [gd_scene load_steps=5 format=3 uid="uid://c77ead4vwisb6"]
 
-[ext_resource type="Script" uid="uid://i8efkg6577w1" path="res://Szenes/level.gd" id="1_5dmvq"]
-[ext_resource type="PackedScene" uid="uid://d2cje8xyqloof" path="res://border.tscn" id="2_5dmvq"]
-[ext_resource type="Script" uid="uid://cuf38lfs3lxgl" path="res://Szenes/canvas_layer.gd" id="2_6a6fj"]
-[ext_resource type="Script" uid="uid://cmj0vcf7ns27q" path="res://Szenes/camera_2d.gd" id="3_rtq64"]
+[ext_resource type="Script" uid="uid://i8efkg6577w1" path="res://Szenes/level/level.gd" id="1_5dmvq"]
+[ext_resource type="PackedScene" uid="uid://d2cje8xyqloof" path="res://Szenes/border/border.tscn" id="2_5dmvq"]
+[ext_resource type="Script" uid="uid://cuf38lfs3lxgl" path="res://Szenes/level/canvas_layer.gd" id="2_6a6fj"]
+[ext_resource type="Script" uid="uid://cmj0vcf7ns27q" path="res://Szenes/level/camera_2d.gd" id="3_rtq64"]
 
 [node name="Level" type="Node2D"]
 script = ExtResource("1_5dmvq")

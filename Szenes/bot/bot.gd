@@ -42,6 +42,7 @@ var hitResult;
 var internalRotation:float = 0
 
 func _ready() -> void:
+	
 	#Engine.physics_ticks_per_second = 4
 	for i in range(neuronsPerLayer.size() - 1):
 		var randomWeightData = PackedFloat32Array()
