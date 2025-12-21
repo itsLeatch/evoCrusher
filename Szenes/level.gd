@@ -1,8 +1,9 @@
 extends Node2D
 
 @export var botCount: int = 10
-@export var borderSize: float = 64
-@export var constantFoodCount: int = 10
+@export var drawBorderSize: float = 64
+@export var constantFoodCount: int = 50
+@export var mapSize: Vector2 = Vector2(1280, 720)
 
 var BorderScene: PackedScene = load("res://border.tscn")
 var BotScene: PackedScene = load("res://Bot.tscn")
@@ -15,23 +16,23 @@ func _ready() -> void:
 	#top
 	var topBorder = BorderScene.instantiate()
 	$Borders.add_child(topBorder)
-	topBorder.global_position = Vector2(0,-Global.mapSize.y / 2 - borderSize / 2)
-	topBorder.scale = Vector2(Global.mapSize.x,borderSize)
+	topBorder.global_position = Vector2(0,-mapSize.y / 2 - drawBorderSize / 2)
+	topBorder.scale = Vector2(mapSize.x,drawBorderSize)
 	#bottom
 	var bottomBorder = BorderScene.instantiate()
 	$Borders.add_child(bottomBorder)
-	bottomBorder.global_position = Vector2(0,Global.mapSize.y / 2 + borderSize / 2)
-	bottomBorder.scale = Vector2(Global.mapSize.x,borderSize)
+	bottomBorder.global_position = Vector2(0,mapSize.y / 2 + drawBorderSize / 2)
+	bottomBorder.scale = Vector2(mapSize.x,drawBorderSize)
 	#left
 	var leftBorder = BorderScene.instantiate()
 	$Borders.add_child(leftBorder)
-	leftBorder.global_position = Vector2(-Global.mapSize.x / 2 - borderSize / 2,0)
-	leftBorder.scale = Vector2(borderSize,Global.mapSize.y)
+	leftBorder.global_position = Vector2(-mapSize.x / 2 - drawBorderSize / 2,0)
+	leftBorder.scale = Vector2(drawBorderSize,mapSize.y)
 	#right
 	var rightBorder = BorderScene.instantiate()
 	$Borders.add_child(rightBorder)
-	rightBorder.global_position = Vector2(Global.mapSize.x / 2 + borderSize / 2,0)
-	rightBorder.scale = Vector2(borderSize,Global.mapSize.y)
+	rightBorder.global_position = Vector2(mapSize.x / 2 + drawBorderSize / 2,0)
+	rightBorder.scale = Vector2(drawBorderSize,mapSize.y)
 	
 	#spawn the minimum amount of food
 	var foodNode = $Food
@@ -43,18 +44,18 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	#make sure, that bot count is not below 10
 	var botNode : Node2D = $Bots
-	while botNode.get_child_count() < 10:
+	while botNode.get_child_count() < botCount:
 		var bot = BotScene.instantiate()
 		botNode.add_child(bot)
 	
 	
 	
-func spawnNewPlayer(newWeights : PackedFloat32Array) -> void:
+func spawnNewPlayer(newWeights : Array) -> void:
 	var botNode : Node2D = $Bots
 	var bot = BotScene.instantiate()
 	botNode.add_child(bot)
 	bot.setWeights(newWeights)
-	print("spawn new player")
+
 
 
 func _on_food_spawner_timeout() -> void:

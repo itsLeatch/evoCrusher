@@ -1,34 +1,37 @@
 extends CharacterBody2D
 
 class_name Bot
-#{input
-	#states
-		#currentEnergy / energyUntilReproduction (if higher then 1, then set to 1)}
-	#input for each sensor:
-		#each sensor contains following data
-		# distance
-		# isFood
-		# isOtherBot
-		# isBoarder
+#input for each sensor:
+	#each sensor contains following data
+	# distance
+	# isFood
+	# isOtherBot
+	# isBoarder
+#general input
+	#bias
 
-	
 const sensorInputCount:int = 4
+const generalSensorInputCount:int = 1
+	
 #outputData
 # rotation
 
 
-const sensorOutputCount: int = 1
+const outputCount: int = 1
 
-@export var speed :float = 300
+@export var speed :float = 50
 @export var maximalSensorLength : float = 100
-@export var sensorCount : int = 3
+@export var sensorCount : int = 2
 @export var sensorArea : float = PI / 2
-@export var maximumEnergy: int = 5
+@export var maximumEnergy: int = 10
+@export var energyForReproduction :int = 1
+@export var minEnergyToStartReproduction = 4
 
-const energyForReproduction :int = 1
+var neuronsPerLayer = [sensorInputCount * sensorCount + generalSensorInputCount, 6, outputCount]
+var neuronWeights :Array = []
 
-var weights :Float32Matrix = Float32Matrix.new(Vector2i(sensorInputCount * sensorCount,sensorOutputCount))
-var inputData :Float32Matrix =  Float32Matrix.new(Vector2i(1,sensorInputCount * sensorCount))
+var inputData :Float32Matrix =  Float32Matrix.new(Vector2i(1,neuronsPerLayer[0]))
+
 var energy: float = 0
 var sensors: Array = []
 
@@ -40,12 +43,15 @@ var internalRotation:float = 0
 
 func _ready() -> void:
 	#Engine.physics_ticks_per_second = 4
-	var randomWeightData = PackedFloat32Array()
-	for i in range(weights.x * weights.y):
-		randomWeightData.append(rng.randf_range(-1,1))
-	weights.data = randomWeightData
+	for i in range(neuronsPerLayer.size() - 1):
+		var randomWeightData = PackedFloat32Array()
+		var neuronLayer: Float32Matrix = Float32Matrix.new(Vector2(neuronsPerLayer[i], neuronsPerLayer[i+1]))
+		for j in range(neuronLayer.x * neuronLayer.y):
+			randomWeightData.append(rng.randf_range(-1,1))
+		neuronLayer.data = randomWeightData
+		neuronWeights.append(neuronLayer)
 	#print(weights.data)
-	global_position = Vector2(rng.randf_range(-Global.mapSize.x / 2,Global.mapSize.x / 2), rng.randf_range(-Global.mapSize.y / 2,Global.mapSize.y / 2))
+	global_position = Vector2(rng.randf_range(-Global.currentLevel.mapSize.x / 2,Global.currentLevel.mapSize.x / 2), rng.randf_range(-Global.currentLevel.mapSize.y / 2,Global.currentLevel.mapSize.y / 2))
 	for i in range(sensorCount):
 		sensors.append(Line2D.new())
 		sensors[sensors.size() - 1].width = 5
@@ -103,10 +109,14 @@ func _process(delta: float) -> void:
 		sensors[i].points = hitVertices
 	#get sensor data
 	inputData.data = sensorData
+	#set the bias
+	inputData.data.append(1)
 	
 	#foreward pass
-	var result = weights.mul(inputData) 
-	internalRotation += result.get_value(Vector2(0,0)) * delta
+	var resultOfPreviousCalculation :Float32Matrix = neuronWeights[0].mul(inputData) 
+	for i in range(neuronWeights.size() - 1):
+		resultOfPreviousCalculation = neuronWeights[i + 1].mul(resultOfPreviousCalculation)
+	internalRotation += resultOfPreviousCalculation.get_value(Vector2(0,0)) * delta
 	$BotImage.rotation = internalRotation
 	
 	#move
@@ -117,21 +127,26 @@ func _process(delta: float) -> void:
 	
 	#check for collision with other player for reproduction
 	if colisionInfo && colisionInfo.get_collider() is Bot:
-		if(energy >= energyForReproduction && colisionInfo.get_collider().getEnergy() >= energyForReproduction):
-
-			var newWeights: PackedFloat32Array
-			for i in range(weights.data.size()):
-				var ownInfluence = energy / (energy + colisionInfo.get_collider().getEnergy()) # how much the weight is effected by the current bot: 0 - all from other bot, 0.5 half, half, 1 - all from current
-				var mutation = 0 #rng.randf_range(-0.025,0.025) # mutation rate
-				var mixedWeight = (weights.data[i] * ownInfluence + colisionInfo.get_collider().getWeights()[i] * (1 - ownInfluence)) / 2
-				var weightWithMutation = mixedWeight + mutation
-				if weightWithMutation > 1:
-					weightWithMutation = 1
-				elif weightWithMutation < -1:
-					weightWithMutation = -1 
-				newWeights.append(weightWithMutation)
+		if(energy >= minEnergyToStartReproduction && colisionInfo.get_collider().getEnergy() >= minEnergyToStartReproduction):
+			var newNeurons :Array = []
+			for i in range(neuronWeights.size()):
+				var newWeights: PackedFloat32Array
+				for j in range(neuronWeights[i].data.size()):
+					var ownInfluence = energy / (energy + colisionInfo.get_collider().getEnergy()) # how much the weight is effected by the current bot: 0 - all from other bot, 0.5 half, half, 1 - all from current
+					var mutation = 0 #rng.randf_range(-0.025,0.025) # mutation rate
+					var mixedWeight = (neuronWeights[i].data[j] * ownInfluence + colisionInfo.get_collider().getWeights()[i].data[j] * (1 - ownInfluence)) / 2
+					var weightWithMutation = mixedWeight + mutation
+					if weightWithMutation > 1:
+						weightWithMutation = 1
+					elif weightWithMutation < -1:
+						weightWithMutation = -1 
+					newWeights.append(weightWithMutation)
 				
-			Global.currentLevel.spawnNewPlayer(newWeights)
+				var newNeuronLayer : Float32Matrix = Float32Matrix.new(Vector2(neuronWeights[i].x,neuronWeights[i].y))
+				newNeuronLayer.data = newWeights
+				newNeurons.append(newNeuronLayer)
+				
+			Global.currentLevel.spawnNewPlayer(newNeurons)
 			energy -= energyForReproduction
 			colisionInfo.get_collider().decreaseEnergy(energyForReproduction)
 	#print current energy 
@@ -148,11 +163,12 @@ func decreaseEnergy(value: float) -> void:
 func getEnergy() -> float:
 	return energy
 
-func getWeights() -> PackedFloat32Array:
-	return weights.data
+func getWeights() -> Array:
+	return neuronWeights
 
-func setWeights(newWeights: PackedFloat32Array) -> void:
-	weights.data = newWeights
+func setWeights(newWeights: Array) -> void:
+	neuronWeights = newWeights
+
 
 func _on_time_alive_timeout() -> void:
 	energy-=1
